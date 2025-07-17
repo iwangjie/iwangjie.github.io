@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7人座驾-终极鱿鱼摇号机</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
+
+        :root {
+            --bg-color: #1a1a1a;
+            --car-color: #2c2c2c;
+            --seat-color: #444;
+            --seat-highlight-color: #ffde00;
+            --text-color: #f0f0f0;
+            --primary-color: #e50914; /* 鱿鱼游戏主题红 */
+            --accent-color: #00d1b2; /* 鱿鱼游戏主题绿 */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+            animation: glow 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px var(--primary-color), 0 0 20px var(--primary-color);
+            }
+            to {
+                text-shadow: 0 0 10px #fff, 0 0 20px #ff4da6, 0 0 30px #ff4da6, 0 0 40px #ff4da6;
+            }
+        }
+
+        p.subtitle {
+            font-size: 1rem;
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+
+        .controls {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .controls label {
+            font-size: 1rem;
+        }
+
+        #driver-select, #start-button {
+            padding: 12px 20px;
+            font-size: 1rem;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            font-weight: 700;
+        }
+
+        #driver-select {
+            background-color: var(--seat-color);
+            color: var(--text-color);
+            border: 2px solid var(--accent-color);
+        }
+
+        #start-button {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
+        }
+
+        #start-button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(229, 9, 20, 0.6);
+        }
+        
+        #start-button:disabled {
+            background-color: #555;
+            color: #999;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .car-layout {
+            background-color: var(--car-color);
+            border-radius: 30px 30px 20px 20px;
+            padding: 30px 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: repeat(3, 1fr);
+            gap: 25px 20px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 2px solid #333;
+        }
+        
+        .car-layout::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: -20px;
+            width: 15px;
+            height: 40px;
+            background: #222;
+            border-radius: 10px 0 0 10px;
+            border: 2px solid #333;
+            border-right: none;
+        }
+        
+        .car-layout::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            right: -20px;
+            width: 15px;
+            height: 40px;
+            background: #222;
+            border-radius: 0 10px 10px 0;
+            border: 2px solid #333;
+            border-left: none;
+        }
+
+
+        .seat {
+            background-color: var(--seat-color);
+            border-radius: 12px;
+            min-height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.3rem;
+            font-weight: 700;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+            border: 3px solid transparent;
+        }
+
+        .name-placeholder {
+            transition: opacity 0.2s ease-in-out;
+        }
+        
+        /* 座位布局 */
+        .seat[data-seat-id="1"] { grid-column: 1 / 2; grid-row: 1 / 2; } /* 司机 */
+        .seat[data-seat-id="2"] { grid-column: 2 / 3; grid-row: 1 / 2; } /* 副驾 */
+        .seat[data-seat-id="3"] { grid-column: 1 / 2; grid-row: 2 / 3; }
+        .seat[data-seat-id="4"] { grid-column: 2 / 3; grid-row: 2 / 3; }
+        .seat[data-seat-id="5"] { grid-column: 1 / 3; grid-row: 3 / 4; } /* 后排中间需要特殊处理 */
+        
+        /* 后排三座样式 */
+        .back-row-container {
+            grid-column: 1 / 3;
+            grid-row: 3 / 4;
+            display: flex;
+            gap: 15px;
+        }
+        .back-row-container .seat {
+            flex: 1;
+        }
+        
+        /* 司机位特殊样式 */
+        .driver-seat {
+            border-color: var(--accent-color);
+        }
+        .driver-seat::after {
+            content: '🚗'; /* 或 '☸' */
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+            font-size: 1.5rem;
+            opacity: 0.5;
+        }
+        
+        /* 动画效果 */
+        .seat.highlight {
+            transform: scale(1.1);
+            border-color: var(--seat-highlight-color);
+            background-color: #5a5a5a;
+            box-shadow: 0 0 20px var(--seat-highlight-color);
+        }
+
+        .seat.finalized {
+            animation: finalized-pop 0.5s ease-out forwards;
+        }
+
+        @keyframes finalized-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); background-color: var(--accent-color); color: #1a1a1a; }
+            100% { transform: scale(1.1); background-color: var(--accent-color); color: #1a1a1a; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>7人座驾-终极鱿鱼摇号机</h1>
+        <p class="subtitle">每次上车都是一场惊心动魄的冒险！</p>
+
+        <div class="controls">
+            <label for="driver-select">本轮司机:</label>
+            <select id="driver-select">
+                <option value="random">🎲 随机选一名幸运司机</option>
+            </select>
+            <button id="start-button">开始摇号</button>
+        </div>
+
+        <div class="car-layout">
+            <!-- 前排 -->
+            <div class="seat driver-seat" data-seat-id="1"><div class="name-placeholder">司机</div></div>
+            <div class="seat" data-seat-id="2"><div class="name-placeholder">副驾</div></div>
+            <!-- 中排 -->
+            <div class="seat" data-seat-id="3"><div class="name-placeholder"></div></div>
+            <div class="seat" data-seat-id="4"><div class="name-placeholder"></div></div>
+            <!-- 后排 (用一个容器包起来实现三座) -->
+            <div class="back-row-container">
+                <div class="seat" data-seat-id="5"><div class="name-placeholder"></div></div>
+                <div class="seat" data-seat-id="6"><div class="name-placeholder"></div></div>
+                <div class="seat" data-seat-id="7"><div class="name-placeholder"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="bgm" src="bgm.mp3" preload="auto"></audio>
+
+    <script>
+        // --- 配置区 ---
+        const config = {
+            people: {
+                drivers: ['毛儿', '五少', '🌟'],
+                passengers: ['任静', '王杰', '睿媛', '天天']
+            },
+            animation: {
+                spinInterval: 180, // 音乐转盘节奏，单位ms
+                scrambleDuration: 3000, // 最终洗牌时长，单位ms
+                scrambleInterval: 75, // 洗牌刷新率，单位ms
+                revealDelay: 300, // 最终结果揭晓延迟，单位ms
+                musicDuration: 12000 // 音乐播放时长，单位ms
+            }
+        };
+
+        // --- DOM元素获取 ---
+        const driverSelect = document.getElementById('driver-select');
+        const startButton = document.getElementById('start-button');
+        const seats = Array.from(document.querySelectorAll('.seat'));
+        const namePlaceholders = Array.from(document.querySelectorAll('.name-placeholder'));
+        const bgm = document.getElementById('bgm');
+
+        // --- 全局变量 ---
+        let isSpinning = false;
+        let spinIntervalId = null;
+        let scrambleIntervalId = null;
+        const allPeople = [...config.people.drivers, ...config.people.passengers];
+
+        // --- 初始化 ---
+        function initialize() {
+            // 填充司机下拉选项
+            config.people.drivers.forEach(driver => {
+                const option = document.createElement('option');
+                option.value = driver;
+                option.textContent = `指定司机: ${driver}`;
+                driverSelect.appendChild(option);
+            });
+            
+            // 设置座位初始文本
+            const defaultTexts = ['司机', '副驾', '左中', '右中', '左后', '中后', '右后'];
+            namePlaceholders.forEach((p, i) => {
+                p.textContent = defaultTexts[i] || '座位';
+            });
+
+            // 绑定事件
+            startButton.addEventListener('click', startLottery);
+        }
+
+        // --- 核心功能函数 ---
+
+        // 洗牌算法 (Fisher-Yates)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // 重置UI状态
+        function resetUI() {
+            seats.forEach(seat => {
+                seat.classList.remove('highlight', 'finalized');
+                seat.style.backgroundColor = '';
+                seat.style.color = '';
+            });
+            const defaultTexts = ['司机', '副驾', '左中', '右中', '左后', '中后', '右后'];
+            namePlaceholders.forEach((p, i) => {
+                p.textContent = defaultTexts[i] || '座位';
+                p.style.opacity = 1;
+            });
+        }
+        
+        // 开始摇号
+        function startLottery() {
+            if (isSpinning) return;
+            isSpinning = true;
+            startButton.disabled = true;
+            startButton.textContent = '摇号中...';
+
+            resetUI();
+            
+            // 播放音乐
+            bgm.currentTime = 0;
+            bgm.play().catch(e => console.error("音乐播放失败:", e));
+
+            // 1. 确定本轮人员分配方案
+            let driver;
+            let others;
+            const selectedDriverValue = driverSelect.value;
+
+            if (selectedDriverValue === 'random') {
+                const shuffledDrivers = shuffleArray([...config.people.drivers]);
+                driver = shuffledDrivers.shift();
+                others = shuffleArray([...shuffledDrivers, ...config.people.passengers]);
+            } else {
+                driver = selectedDriverValue;
+                others = shuffleArray(allPeople.filter(p => p !== driver));
+            }
+            
+            const finalAssignments = [driver, ...others];
+
+            // 2. 开始音乐转盘动画
+            const seatOrder = [1, 2, 4, 7, 6, 5, 3]; // 定义转圈顺序
+            let spinIndex = 0;
+            spinIntervalId = setInterval(() => {
+                seats.forEach(s => s.classList.remove('highlight'));
+                const currentSeatId = seatOrder[spinIndex % seatOrder.length];
+                const currentSeat = document.querySelector(`.seat[data-seat-id="${currentSeatId}"]`);
+                currentSeat.classList.add('highlight');
+                spinIndex++;
+            }, config.animation.spinInterval);
+
+            // 3. 音乐转盘动画结束后，开始快速洗牌动画
+            setTimeout(() => {
+                clearInterval(spinIntervalId);
+                seats.forEach(s => s.classList.remove('highlight'));
+                
+                // 开始洗牌动画
+                scrambleIntervalId = setInterval(() => {
+                    const shuffledPeople = shuffleArray([...allPeople]);
+                    namePlaceholders.forEach((p, i) => {
+                        p.textContent = shuffledPeople[i];
+                    });
+                }, config.animation.scrambleInterval);
+
+                // 4. 停止洗牌，揭晓最终结果
+                setTimeout(() => {
+                    clearInterval(scrambleIntervalId);
+                    bgm.pause();
+                    revealResults(finalAssignments);
+                }, config.animation.scrambleDuration);
+
+            }, config.animation.musicDuration);
+        }
+
+        // 揭晓最终结果
+        function revealResults(assignments) {
+            startButton.textContent = '尘埃落定！';
+            assignments.forEach((person, index) => {
+                const seatIndex = index; // 0-6
+                const seatElement = seats[seatIndex];
+                const placeholder = namePlaceholders[seatIndex];
+                
+                setTimeout(() => {
+                    placeholder.textContent = person;
+                    seatElement.classList.add('finalized');
+                }, index * config.animation.revealDelay);
+            });
+            
+            // 摇号结束，恢复按钮
+            setTimeout(() => {
+                isSpinning = false;
+                startButton.disabled = false;
+                startButton.textContent = '再来一轮！';
+            }, assignments.length * config.animation.revealDelay + 500);
+        }
+
+
+        // --- 页面加载后执行初始化 ---
+        document.addEventListener('DOMContentLoaded', initialize);
+    </script>
+</body>
+</html>
