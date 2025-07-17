@@ -231,7 +231,8 @@
         <select id="driver-select">
             <option value="random">🎲 随机选一名幸运司机</option>
         </select>
-        <button id="start-button">开始摇号</button>
+        <!-- 修改点：初始状态为禁用，并显示加载文本 -->
+        <button id="start-button" disabled>音乐加载中...</button>
     </div>
 
     <div class="car-layout">
@@ -250,6 +251,7 @@
     </div>
 </div>
 
+<!-- 请确保你有一个名为 bgm.mp3 的文件在同级目录下 -->
 <audio id="bgm" src="bgm.mp3" preload="auto"></audio>
 
 <script>
@@ -299,6 +301,21 @@
 
         // 绑定事件
         startButton.addEventListener('click', startLottery);
+
+        // --- 新增：音频加载逻辑 ---
+        function enableStartButton() {
+            startButton.disabled = false;
+            startButton.textContent = '开始摇号';
+        }
+
+        // 检查音频是否已缓存加载完毕
+        // readyState 4 表示 HAVE_ENOUGH_DATA
+        if (bgm.readyState >= 4) {
+            enableStartButton();
+        } else {
+            // 监听 canplaythrough 事件，确保音频可以无中断播放
+            bgm.addEventListener('canplaythrough', enableStartButton, { once: true });
+        }
     }
 
     // --- 核心功能函数 ---
@@ -403,7 +420,7 @@
             }, index * config.animation.revealDelay);
         });
 
-        // 摇号结束，恢复按钮
+        // 摇号结束，恢复按钮，允许开始新一轮
         setTimeout(() => {
             isSpinning = false;
             startButton.disabled = false;
