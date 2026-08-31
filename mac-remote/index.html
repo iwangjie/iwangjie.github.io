@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#11151c" />
+  <title>Mac 远程状态</title>
+  <style>
+    :root {
+      --bg: #11151c;
+      --card: #1b2230;
+      --line: #2c3648;
+      --text: #eef2f8;
+      --muted: #8b97ab;
+      --accent: #5b8cff;
+      --ok: #3ecf8e;
+      --warn: #f0b429;
+      --bad: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1d2a44 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+    main { max-width: 520px; margin: 0 auto; }
+    h1 { font-size: 1.35rem; margin: 0 0 6px; }
+    .sub { color: var(--muted); margin: 0 0 20px; font-size: 0.92rem; line-height: 1.45; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
+    input[type="password"], input[type="text"], input[type="number"] {
+      width: 100%;
+      background: #10151f;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 1rem;
+    }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+    }
+    button.ghost { background: #273044; color: var(--text); }
+    button.danger { background: #5a2430; color: #ffd5d5; }
+    button:disabled { opacity: 0.55; cursor: default; }
+    .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .seg button { padding: 14px; }
+    .seg button.on { outline: 2px solid var(--ok); background: #1c3b32; }
+    input[type="range"] { width: 100%; }
+    .bright { display: flex; align-items: center; gap: 10px; }
+    .bright output { min-width: 3ch; font-variant-numeric: tabular-nums; font-size: 1.4rem; }
+    .status { font-size: 0.88rem; color: var(--muted); min-height: 1.3em; }
+    .status.ok { color: var(--ok); }
+    .status.bad { color: var(--bad); }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.78rem;
+      color: #c9d4e5;
+      max-height: 240px;
+      overflow: auto;
+    }
+    a { color: var(--accent); }
+    details { color: var(--muted); font-size: 0.88rem; }
+    details summary { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Mac 远程状态</h1>
+    <p class="sub">改的是私有仓库里的期望状态，电脑自己对齐。这个页面不含密钥，token 只存在本机浏览器里。</p>
+
+    <section class="card">
+      <label for="token">GitHub token（只给 mac-remote-state 仓库 Contents 读写）</label>
+      <input id="token" type="password" autocomplete="off" placeholder="github_pat_…" />
+      <div class="row" style="margin-top:10px">
+        <button type="button" id="saveToken">保存到本机</button>
+        <button type="button" class="ghost" id="clearToken">清除</button>
+      </div>
+      <p class="status" id="tokenStatus"></p>
+      <details>
+        <summary>怎么拿 token</summary>
+        <p>打开 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained PAT</a>，Resource owner 选自己，只勾仓库 <code>mac-remote-state</code>，Repository permissions → Contents → Read and write。生成后粘贴到上面。不要勾别的仓库，也不要把 token 发给任何人。</p>
+      </details>
+    </section>
+
+    <section class="card">
+      <label>UU 远程桌面</label>
+      <div class="seg">
+        <button type="button" id="uuRunning">运行</button>
+        <button type="button" id="uuStopped">关闭</button>
+      </div>
+      <label style="margin-top:16px">亮度</label>
+      <div class="bright">
+        <input id="brightness" type="range" min="0" max="100" value="20" />
+        <output id="brightnessOut">20</output>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button type="button" id="save">保存期望状态</button>
+        <button type="button" class="ghost" id="reload">重新加载</button>
+      </div>
+      <p class="status" id="saveStatus"></p>
+    </section>
+
+    <section class="card">
+      <label>电脑回写的日志（只读）</label>
+      <pre id="log">(还没加载)</pre>
+    </section>
+  </main>
+  <script>
+    const OWNER = "iwangjie";
+    const REPO = "mac-remote-state";
+    const DESIRED = "desired.json";
+    const LOG = "log.md";
+    const TOKEN_KEY = "mac-remote-state.token";
+    const API = "https://api.github.com";
+
+    const $ = (id) => document.getElementById(id);
+    const tokenInput = $("token");
+    const tokenStatus = $("tokenStatus");
+    const saveStatus = $("saveStatus");
+    const logEl = $("log");
+    const brightness = $("brightness");
+    const brightnessOut = $("brightnessOut");
+    const uuRunning = $("uuRunning");
+    const uuStopped = $("uuStopped");
+
+    let desiredSha = null;
+    let uu = "running";
+
+    function setStatus(el, text, kind) {
+      el.textContent = text;
+      el.className = "status" + (kind ? " " + kind : "");
+    }
+
+    function token() {
+      return (tokenInput.value || localStorage.getItem(TOKEN_KEY) || "").trim();
+    }
+
+    function setUu(value) {
+      uu = value;
+      uuRunning.classList.toggle("on", value === "running");
+      uuStopped.classList.toggle("on", value === "stopped");
+    }
+
+    brightness.addEventListener("input", () => {
+      brightnessOut.textContent = brightness.value;
+    });
+    uuRunning.addEventListener("click", () => setUu("running"));
+    uuStopped.addEventListener("click", () => setUu("stopped"));
+
+    $("saveToken").addEventListener("click", () => {
+      const t = tokenInput.value.trim();
+      if (!t) {
+        setStatus(tokenStatus, "先粘贴 token", "bad");
+        return;
+      }
+      localStorage.setItem(TOKEN_KEY, t);
+      setStatus(tokenStatus, "已保存在这个浏览器，不会上传到网页服务器", "ok");
+      loadAll();
+    });
+    $("clearToken").addEventListener("click", () => {
+      localStorage.removeItem(TOKEN_KEY);
+      tokenInput.value = "";
+      setStatus(tokenStatus, "已清除", "");
+    });
+
+    async function gh(path, opts = {}) {
+      const t = token();
+      if (!t) throw new Error("还没有 token");
+      const res = await fetch(`${API}/repos/${OWNER}/${REPO}/contents/${path}`, {
+        method: opts.method || "GET",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: "Bearer " + t,
+          "X-GitHub-Api-Version": "2022-11-28",
+          ...(opts.body ? { "Content-Type": "application/json" } : {}),
+        },
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch (_) {}
+      if (!res.ok) {
+        const msg = (data && (data.message || data.error)) || ("HTTP " + res.status);
+        throw new Error(msg);
+      }
+      return data;
+    }
+
+    function decodeFile(file) {
+      const b64 = (file.content || "").replace(/\s/g, "");
+      const bin = atob(b64);
+      const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    }
+
+    function encodeFile(text) {
+      const bytes = new TextEncoder().encode(text);
+      let s = "";
+      bytes.forEach((b) => { s += String.fromCharCode(b); });
+      return btoa(s);
+    }
+
+    function applyDesired(obj) {
+      if (obj && obj.app && (obj.app.uuremote === "running" || obj.app.uuremote === "stopped")) {
+        setUu(obj.app.uuremote);
+      }
+      if (obj && obj.sys && obj.sys.brightness != null) {
+        const n = Math.max(0, Math.min(100, Math.round(Number(obj.sys.brightness))));
+        brightness.value = String(n);
+        brightnessOut.textContent = String(n);
+      }
+    }
+
+    async function loadAll() {
+      if (!token()) {
+        setStatus(tokenStatus, "填 token 才能读写私有仓库", "warn");
+        return;
+      }
+      setStatus(saveStatus, "加载中…", "");
+      try {
+        const file = await gh(DESIRED);
+        desiredSha = file.sha;
+        applyDesired(JSON.parse(decodeFile(file)));
+        setStatus(saveStatus, "已加载期望状态", "ok");
+      } catch (err) {
+        setStatus(saveStatus, "加载失败：" + err.message, "bad");
+      }
+      try {
+        const file = await gh(LOG);
+        logEl.textContent = decodeFile(file) || "(空)";
+      } catch (err) {
+        logEl.textContent = "日志读取失败：" + err.message;
+      }
+    }
+
+    $("reload").addEventListener("click", loadAll);
+
+    $("save").addEventListener("click", async () => {
+      const payload = {
+        app: { uuremote: uu },
+        sys: { brightness: Number(brightness.value) },
+      };
+      const text = JSON.stringify(payload, null, 4) + "\n";
+      setStatus(saveStatus, "保存中…", "");
+      try {
+        const latest = await gh(DESIRED);
+        desiredSha = latest.sha;
+        await gh(DESIRED, {
+          method: "PUT",
+          body: {
+            message: "update desired state from control page",
+            content: encodeFile(text),
+            sha: desiredSha,
+          },
+        });
+        setStatus(saveStatus, "已写入私有仓库，电脑最多约 20 秒后对齐", "ok");
+        loadAll();
+      } catch (err) {
+        setStatus(saveStatus, "保存失败：" + err.message, "bad");
+      }
+    });
+
+    const saved = localStorage.getItem(TOKEN_KEY);
+    if (saved) {
+      tokenInput.value = saved;
+      setStatus(tokenStatus, "已使用本机保存的 token", "ok");
+      loadAll();
+    } else {
+      setUu("running");
+    }
+  </script>
+</body>
+</html>
