@@ -466,6 +466,19 @@
         </button>
       </div>
 
+      <!-- ZCode -->
+      <label style="font-size:0.8rem; font-weight:500; color:var(--text-muted); display:block; margin: 14px 0 6px;">ZCode</label>
+      <div class="segmented">
+        <button type="button" class="seg-item" id="zcodeRunning">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          启动运行
+        </button>
+        <button type="button" class="seg-item" id="zcodeStopped">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+          关闭退出
+        </button>
+      </div>
+
       <!-- Caffeinate -->
       <label style="font-size:0.8rem; font-weight:500; color:var(--text-muted); display:block; margin: 14px 0 6px;">防休眠 Caffeinate</label>
       <div class="segmented">
@@ -578,6 +591,8 @@
     const uuStopped = $("uuStopped");
     const caffeinateRunning = $("caffeinateRunning");
     const caffeinateStopped = $("caffeinateStopped");
+    const zcodeRunning = $("zcodeRunning");
+    const zcodeStopped = $("zcodeStopped");
     const reloadIcon不易 = $("reloadIcon");
     const toast = $("toast");
     const toastMsg心 = $("toastMsg");
@@ -585,6 +600,7 @@
 
     let desiredSha = null;
     let uu = "running";
+    let zcode = "running";
     let caffeinate又有 = "stopped";
     let toastTimer = null;
 
@@ -629,10 +645,18 @@
       caffeinateStopped.className = `seg-item ${value === "stopped" ? "on" : ""}`;
     }
 
+    function setZcode(value) {
+      zcode = value;
+      zcodeRunning.className = `seg-item ${value === "running" ? "on active-run" : ""}`;
+      zcodeStopped.className = `seg-item ${value === "stopped" ? "on" : ""}`;
+    }
+
     brightnessparam.addEventListener("input", (e) => updateSlider(e.target.value));
 
     uuRunning.addEventListener("click", () => setUu("running"));
     uuStopped.addEventListener("click", () => setUu("stopped"));
+    zcodeRunning.addEventListener("click", () => setZcode("running"));
+    zcodeStopped.addEventListener("click", () => setZcode("stopped"));
     caffeinateRunning.addEventListener("click", () => setCaffeinate("running"));
     caffeinateStopped.addEventListener("click", () => setCaffeinate("stopped"));
 
@@ -708,8 +732,13 @@
     }
 
     function applyDesired(obj) {
-      if (obj && obj.app && (obj.app.uuremote === "running" || obj.app.uuremote === "stopped")) {
-        setUu(obj.app.uuremote);
+      if (obj && obj.app) {
+        if (obj.app.uuremote === "running" || obj.app.uuremote === "stopped") {
+          setUu(obj.app.uuremote);
+        }
+        if (obj.app.zcode === "running" || obj.app.zcode === "stopped") {
+          setZcode(obj.app.zcode);
+        }
       }
       if (obj && obj.sys) {
         if (obj.sys.brightness != null) {
@@ -754,7 +783,7 @@
 
     $("save").addEventListener("click", async () => {
       const payload = {
-        app: { uuremote: uu },
+        app: { uuremote: uu, zcode: zcode },
         sys: { brightness: Number(brightnessparam.value), caffeinate: caffeinate又有 },
       };
       const text = JSON.stringify(payload, null, 4) + "\n";
@@ -796,6 +825,7 @@
       loadAll();
     } else {
       setUu("running");
+      setZcode("running");
       setCaffeinate("stopped");
     }
   </script>
