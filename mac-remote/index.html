@@ -109,6 +109,12 @@
         <button type="button" id="uuRunning">运行</button>
         <button type="button" id="uuStopped">关闭</button>
       </div>
+      <label style="margin-top:16px">防休眠（caffeinate）</label>
+      <div class="seg">
+        <button type="button" id="caffeinateRunning">开启</button>
+        <button type="button" id="caffeinateStopped">关闭</button>
+      </div>
+      <p class="status">盖上盖子后仍可能睡；接电源时开启，电脑被唤醒后会尽量保持不休眠。</p>
       <label style="margin-top:16px">亮度</label>
       <div class="bright">
         <input id="brightness" type="range" min="0" max="100" value="20" />
@@ -143,9 +149,12 @@
     const brightnessOut = $("brightnessOut");
     const uuRunning = $("uuRunning");
     const uuStopped = $("uuStopped");
+    const caffeinateRunning = $("caffeinateRunning");
+    const caffeinateStopped = $("caffeinateStopped");
 
     let desiredSha = null;
     let uu = "running";
+    let caffeinate = "stopped";
 
     function setStatus(el, text, kind) {
       el.textContent = text;
@@ -162,11 +171,19 @@
       uuStopped.classList.toggle("on", value === "stopped");
     }
 
+    function setCaffeinate(value) {
+      caffeinate = value;
+      caffeinateRunning.classList.toggle("on", value === "running");
+      caffeinateStopped.classList.toggle("on", value === "stopped");
+    }
+
     brightness.addEventListener("input", () => {
       brightnessOut.textContent = brightness.value;
     });
     uuRunning.addEventListener("click", () => setUu("running"));
     uuStopped.addEventListener("click", () => setUu("stopped"));
+    caffeinateRunning.addEventListener("click", () => setCaffeinate("running"));
+    caffeinateStopped.addEventListener("click", () => setCaffeinate("stopped"));
 
     $("saveToken").addEventListener("click", () => {
       const t = tokenInput.value.trim();
@@ -225,10 +242,15 @@
       if (obj && obj.app && (obj.app.uuremote === "running" || obj.app.uuremote === "stopped")) {
         setUu(obj.app.uuremote);
       }
-      if (obj && obj.sys && obj.sys.brightness != null) {
-        const n = Math.max(0, Math.min(100, Math.round(Number(obj.sys.brightness))));
-        brightness.value = String(n);
-        brightnessOut.textContent = String(n);
+      if (obj && obj.sys) {
+        if (obj.sys.brightness != null) {
+          const n = Math.max(0, Math.min(100, Math.round(Number(obj.sys.brightness))));
+          brightness.value = String(n);
+          brightnessOut.textContent = String(n);
+        }
+        if (obj.sys.caffeinate === "running" || obj.sys.caffeinate === "stopped") {
+          setCaffeinate(obj.sys.caffeinate);
+        }
       }
     }
 
@@ -259,7 +281,7 @@
     $("save").addEventListener("click", async () => {
       const payload = {
         app: { uuremote: uu },
-        sys: { brightness: Number(brightness.value) },
+        sys: { brightness: Number(brightness.value), caffeinate: caffeinate },
       };
       const text = JSON.stringify(payload, null, 4) + "\n";
       setStatus(saveStatus, "保存中…", "");
@@ -288,6 +310,7 @@
       loadAll();
     } else {
       setUu("running");
+      setCaffeinate("stopped");
     }
   </script>
 </body>
