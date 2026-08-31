@@ -87,7 +87,7 @@
 <body>
   <main>
     <h1>Mac 远程状态</h1>
-    <p class="sub">改的是私有仓库里的期望状态，电脑自己对齐。这个页面不含密钥，token 只存在本机浏览器里。</p>
+    <p class="sub">改的是私有仓库里的期望状态，电脑自己对齐。这个页面不含密钥，token 只存在本机浏览器里。看不到「防休眠」的话请强制刷新（忽略缓存）。</p>
 
     <section class="card">
       <label for="token">GitHub token（只给 mac-remote-state 仓库 Contents 读写）</label>
@@ -109,12 +109,6 @@
         <button type="button" id="uuRunning">运行</button>
         <button type="button" id="uuStopped">关闭</button>
       </div>
-      <label style="margin-top:16px">防休眠（caffeinate）</label>
-      <div class="seg">
-        <button type="button" id="caffeinateRunning">开启</button>
-        <button type="button" id="caffeinateStopped">关闭</button>
-      </div>
-      <p class="status">盖上盖子后仍可能睡；接电源时开启，电脑被唤醒后会尽量保持不休眠。</p>
       <label style="margin-top:16px">亮度</label>
       <div class="bright">
         <input id="brightness" type="range" min="0" max="100" value="20" />
@@ -125,6 +119,15 @@
         <button type="button" class="ghost" id="reload">重新加载</button>
       </div>
       <p class="status" id="saveStatus"></p>
+    </section>
+
+    <section class="card">
+      <label>防休眠 caffeinate</label>
+      <div class="seg">
+        <button type="button" id="caffeinateRunning">开启防休眠</button>
+        <button type="button" id="caffeinateStopped" class="on">允许休眠</button>
+      </div>
+      <p class="status" style="margin-top:10px">接电源时打开。盖上盖子后系统仍可能睡；被唤醒后会尽量保持不休眠。</p>
     </section>
 
     <section class="card">
